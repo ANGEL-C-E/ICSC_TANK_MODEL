@@ -1,26 +1,29 @@
-#code to run the simulation and watch data telemetry
+from server import TankModel
+from mqtt_client import MQTTClient
+import time
 
-from server import TankModel 
 
+tank = TankModel(level=4.0)
 
-tank = TankModel(
-    level=4.0,
-)
+mqtt = MQTTClient()
 
-tank.set_pump(pump_pct=1.0)
-tank.set_valve(valve_pct=0.0)
+mqtt.pump_callback = tank.set_pump
+mqtt.valve_callback = tank.set_valve
 
-history = []
-step = 10
+mqtt.connect()
 
-for t in range(step):
-    tank.update(dt=0.01)
-    
-    history.append(
-        {
-        "time": t * 0.1,
+dt = 0.1
+sim_time = 0.0
+
+while True:
+    tank.update(dt)
+    sim_time += dt
+
+    telemetry = {
+        "time": sim_time,
         **tank.get_state()
     }
-)
 
-print(history)
+    mqtt.publish_telemetry(telemetry)
+
+    time.sleep(dt)
